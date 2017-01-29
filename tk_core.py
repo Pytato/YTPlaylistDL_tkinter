@@ -1,8 +1,10 @@
 from tkinter import ttk as tk
 import tkinter
+from tkinter import filedialog
 import pkinter as pk
 import logging
 import pafy
+import os
 
 
 class TkGUI:
@@ -29,7 +31,7 @@ class TkGUI:
         self.url_entry.grid(column=1, row=0, padx=10, pady=5)
 
         url_scrape_button = tk.Button(url_entry_frame, text="Scrape URL", command=lambda: self.scrape_url(url_str))
-        url_scrape_button.grid(column=1, row=1, sticky="E", padx=10, pady=[0, 5])
+        url_scrape_button.grid(column=1, row=1, sticky="E", padx=10)
 
         self.video_frame = tk.Frame(self.root)
         self.video_frame.pack(fill="x")
@@ -80,15 +82,27 @@ class TkGUI:
             self.format_dropdown = tk.Combobox(self.options_frame, textvariable=self.format_choice, state="readonly",
                                                values=["mp3", "webm audio", "ogg", "mp4",
                                                        "webm video"], width=15)
-            self.format_dropdown.grid(sticky="e")
+            self.format_dropdown.grid(sticky="e", padx=[3, 0])
             self.format_dropdown.bind("<<ComboboxSelected>>", self.format_check)
 
             self.quality_choice = tkinter.StringVar()
             self.quality_choice.set("Choose format first")
             self.quality_dropdown = tk.Combobox(self.options_frame, textvariable=self.quality_choice, state="disabled")
-            self.quality_dropdown.grid(sticky="e", padx=5, column=1, row=0)
+            self.quality_dropdown.grid(sticky="e", padx=3, column=1, row=0)
+
+            self.download_dir_choice = tkinter.StringVar()
+            self.download_dir_choice.set(os.path.abspath("./Downloads/").replace("\\", "/"))
+            self.download_dir_entry = tk.Entry(self.options_frame, textvariable=self.download_dir_choice, width=26)
+            self.download_dir_window_open = tk.Button(self.options_frame, text="Browse...", command=self.browse_dirs)
+            self.download_dir_entry.grid(sticky="e", column=2, row=0)
+            self.download_dir_window_open.grid(sticky="e", column=3, row=0, padx=[3, 1])
 
             self.options_gen = True
+
+    def browse_dirs(self):
+        download_dir_choice = filedialog.askdirectory(parent=self.root, initialdir="./Downloads/", mustexist=True,
+                                                      title="Choose a download directory")
+        self.download_dir_choice.set(download_dir_choice)
 
     def format_check(self, etc):
         possible_formats = {"audio": ["mp3", "m4a", "webm audio", "ogg"], "video": ["mp4", "webm video"]}
