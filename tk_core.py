@@ -10,6 +10,8 @@ class TkGUI:
         self.tkGUILogger = logging.getLogger("PlaylistDL.tk_core.TkGUI")
         self.root = root
         self.options_gen = False
+        self.quality_widget_pregen = False
+        self.check_firstrun = True
         self.root.title("YTPlaylistDL")
         self.gen_base_widgets()
         self.root.mainloop()
@@ -70,35 +72,56 @@ class TkGUI:
 
     def generate_options(self):
         if not self.options_gen:
-            options_frame = tk.LabelFrame(self.video_frame, labelanchor="n", text="Options")
-            options_frame.grid(row=1, padx=10, sticky="we", columnspan=3)
+            self.options_frame = tk.LabelFrame(self.video_frame, labelanchor="n", text="Options")
+            self.options_frame.grid(row=1, padx=10, sticky="we", columnspan=3)
 
             self.format_choice = tkinter.StringVar()
             self.format_choice.set("Choose a format")
-            self.format_dropdown = tk.Combobox(options_frame, textvariable=self.format_choice, state="readonly",
+            self.format_dropdown = tk.Combobox(self.options_frame, textvariable=self.format_choice, state="readonly",
                                                values=["mp3", "webm audio", "ogg", "mp4",
                                                        "webm video"], width=15)
-            self.format_dropdown.grid(sticky="e", padx=[0, 5])
+            self.format_dropdown.grid(sticky="e")
             self.format_dropdown.bind("<<ComboboxSelected>>", self.format_check)
+
+            self.quality_choice = tkinter.StringVar()
+            self.quality_choice.set("Choose format first")
+            self.quality_dropdown = tk.Combobox(self.options_frame, textvariable=self.quality_choice, state="disabled")
+            self.quality_dropdown.grid(sticky="e", padx=5, column=1, row=0)
 
             self.options_gen = True
 
-    def format_check(self):
+    def format_check(self, etc):
         possible_formats = {"audio": ["mp3", "m4a", "webm audio", "ogg"], "video": ["mp4", "webm video"]}
         local_format_choice = self.format_dropdown.get()
         if local_format_choice == "Choose a format":
             return
+
+        if self.quality_widget_pregen or self.check_firstrun is True:
+            self.clear_quality_widgets()
+            self.check_firstrun = False
+
+        self.quality_widget_pregen = True
 
         if local_format_choice in possible_formats["audio"]:
             self.gen_bitrates()
         elif local_format_choice in possible_formats["video"]:
             self.gen_resolutions()
 
+    def clear_quality_widgets(self):
+        self.quality_dropdown.grid_forget()
+        self.quality_dropdown.destroy()
+
     def gen_bitrates(self):
-        pass
-    
+        self.quality_choice.set("Bitrate")
+        self.quality_dropdown = tk.Combobox(self.options_frame, textvariable=self.quality_choice, state="readonly",
+                                            values=["Highest", "320k", "256k", "192k", "160k", "128k", "98k"])
+        self.quality_dropdown.grid(sticky="e", padx=5, column=1, row=0)
+
     def gen_resolutions(self):
-        pass
+        self.quality_choice.set("Resolution")
+        self.quality_dropdown = tk.Combobox(self.options_frame, textvariable=self.quality_choice, state="readonly",
+                                            values=["Highest", "1080p", "720p", "480p", "360p", "240p"])
+        self.quality_dropdown.grid(sticky="e", padx=5, column=1, row=0)
 
     def scrape_url(self, user_url):
         is_playlist = False
