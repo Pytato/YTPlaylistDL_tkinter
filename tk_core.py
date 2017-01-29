@@ -3,7 +3,6 @@ import tkinter
 import pkinter as pk
 import logging
 import pafy
-# https://www.youtube.com/watch?v=DG2KHJILDzo
 
 
 class TkGUI:
