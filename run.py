@@ -48,4 +48,3 @@ if cfg.getboolean("Logging", "logging_to_file") is True:
 main_logger.info("Logging has been configured, if you want to change formatting you will have to alter the source.")
 main_window = tkinter.Tk()
 tk_core_class = tk_core.TkGUI(main_window)
-tk_core_class.mainloop()
