@@ -115,7 +115,7 @@ class TkGUI:
             self.format_choice = tkinter.StringVar()
             self.format_choice.set("Format")
             self.format_dropdown = tk.Combobox(self.options_frame, textvariable=self.format_choice, state="readonly",
-                                               values=["m4a", "webm audio", "ogg", "mp4",
+                                               values=["m4a", "webm", "ogg", "mp4",
                                                        "webm video"], width=12)
             self.format_dropdown.grid(sticky="e", padx=[3, 0])
             self.format_dropdown.bind("<<ComboboxSelected>>", self.format_check)
@@ -138,12 +138,14 @@ class TkGUI:
 
     def gen_dl_widgets(self):
         self.currently_downloading = tkinter.StringVar()
+        self.load_bar_current = tkinter.IntVar()
         self.currently_downloading.set('Click "Begin Download" to start.')
         self.download_info_frame = tk.Frame(self.video_frame)
         self.download_info_frame.grid(column=0, row=2, padx=10, pady=5, sticky="we")
         start_download_button = tk.Button(self.download_info_frame, text="Begin Download",
                                           command=self.start_downloaders, width=84)
-        self.download_load_bar = tk.Progressbar(self.download_info_frame, orient="horizontal", mode="determinate")
+        self.download_load_bar = tk.Progressbar(self.download_info_frame, orient="horizontal", mode="determinate",
+                                                variable=self.load_bar_current)
         self.download_current_label = tk.Label(self.download_info_frame, textvariable=self.currently_downloading,
                                                width=84)
         start_download_button.grid(pady=[0, 3], sticky="we")
@@ -151,11 +153,12 @@ class TkGUI:
         self.download_current_label.grid(column=0, row=2, sticky="we")
 
     def start_downloaders(self):
-        possible_formats = {"audio": ["m4a", "webm audio", "ogg"], "video": ["mp4", "webm video"]}
+        possible_formats = {"audio": ["m4a", "webm", "ogg"], "video": ["mp4", "webm video"]}
         self.download_object = []
         local_format = self.format_choice.get()
         self.currently_downloading.set("Currently gathering download url(s).")
         self.download_info_frame.update_idletasks()
+        time.sleep(1)
         if local_format in possible_formats["audio"]:
             audiodl = audio.AudioDL()
             if self.is_playlist:
@@ -178,32 +181,48 @@ class TkGUI:
 
     def download_from_object(self, data_set, download_title):
         self.currently_downloading.set("Calculating full download-size.")
-        self.download_info_frame.update_idletasks()
+        # self.download_info_frame.update_idletasks()
         time.sleep(1)
-        download_size_total = 0
-        download_size_dict_by_title = {}
+        self.download_size_total = 0
+        self.download_size_dict_by_title = {}
+        self.currently_downloaded = 0
+
         for dl_url in data_set.values():
             request_var = requests.head(dl_url)
-            download_size_total += int(request_var.headers["content-length"])
-            # download_size_dict_by_title[""]
-        loading_bar_length = download_size_total
-        self.download_load_bar.configure(maximum=loading_bar_length)
-        time.sleep(1)
+            self.download_size_total += int(request_var.headers["content-length"])
+            self.download_size_dict_by_title[dl_url] = int(request_var.headers["content-length"])
+
+        self.download_load_bar.stop()
+        self.load_bar_current.set(0)
+        self.download_load_bar.configure(maximum=self.download_size_total, mode="determinate")
+        self.download_info_frame.update_idletasks()
+        time.sleep(0.5)
+
         safe_characters = (' ', '.', '_')
         file_title = "".join(c for c in download_title if c.isalnum() or c in safe_characters).rstrip()
         download_folder_name = file_title+" [{}]".format(datetime.strftime(datetime.today(),
                                                                            format="%d-%m-%y_%H%M%S"))
         local_download_dir = self.download_dir_choice.get().replace("\\", "/")
         os.mkdir(local_download_dir+"/"+download_folder_name)
+
         for title, dl_url in data_set.items():
-            file_title = "".join(c for c in title if c.isalnum() or c in safe_characters).rstrip()
-            self.currently_downloading.set("Currently downloading '{}'".format(file_title))
-            self.download_info_frame.update_idletasks()
+            self.currently_downloaded_file = 0
+            self.wide_dl_url = dl_url
+            self.file_title = "".join(c for c in title if c.isalnum() or c in safe_characters).rstrip()
             time.sleep(1)
-            request.urlretrieve(dl_url, filename=local_download_dir+"/"+download_folder_name+"/"+file_title)
-            self.download_load_bar.step()
-            self.download_info_frame.update_idletasks()
+            request.urlretrieve(dl_url, filename=local_download_dir+"/"+download_folder_name+"/"+self.file_title,
+                                reporthook=self.download_progress_report)
+
         self.currently_downloading.set("Finished downloading files.")
+
+    def download_progress_report(self, block_count, block_size, file_size):
+        self.currently_downloaded += block_size
+        self.currently_downloaded_file += block_size
+        self.load_bar_current.set(int(self.currently_downloaded))
+        file_downloaded_atm = "[{0}/{1}] Downloading {2}".format((self.currently_downloaded_file/1024),
+                                                                 (int(self.download_size_dict_by_title[self.wide_dl_url])/1024),
+                                                                 self.file_title)
+        self.currently_downloading.set(file_downloaded_atm)
 
     def browse_dirs(self):
         download_dir_choice = filedialog.askdirectory(parent=self.root, initialdir="./Downloads/", mustexist=True,
@@ -211,7 +230,7 @@ class TkGUI:
         self.download_dir_choice.set(download_dir_choice)
 
     def format_check(self, etc):
-        possible_formats = {"audio": ["m4a", "webm audio", "ogg"], "video": ["mp4", "webm video"]}
+        possible_formats = {"audio": ["m4a", "webm", "ogg"], "video": ["mp4", "webm video"]}
         local_format_choice = self.format_dropdown.get()
         if local_format_choice == "Choose a format":
             return
